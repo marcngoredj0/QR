@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Sample Scanner</title>
+
+  <!-- QR Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      padding: 20px;
+    }
+    #reader {
+      width: 300px;
+      margin: auto;
+    }
+    ul {
+      margin-top: 20px;
+      text-align: left;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Scan Sample QR Code</h2>
+
+<div id="reader"></div>
+
+<h3>Scanned Sample IDs:</h3>
+<ul id="sampleList"></ul>
+
+<script>
+  function onScanSuccess(decodedText) {
+    console.log("Raw QR Data:", decodedText);
+
+    // Example: S001,S002,S003
+    const samples = decodedText.split(",");
+
+    const list = document.getElementById("sampleList");
+    list.innerHTML = "";
+
+    samples.forEach(sample => {
+      const li = document.createElement("li");
+      li.textContent = sample.trim();
+      list.appendChild(li);
+    });
+  }
+
+  function onScanError(errorMessage) {
+    // ignore scanning errors
+  }
+
+  const html5QrCode = new Html5Qrcode("reader");
+
+  Html5Qrcode.getCameras().then(devices => {
+    if (devices && devices.length) {
+      const cameraId = devices[0].id;
+
+      html5QrCode.start(
+        cameraId,
+        { fps: 10, qrbox: 250 },
+        onScanSuccess,
+        onScanError
+      );
+    }
+  }).catch(err => {
+    alert("Camera error: " + err);
+  });
+</script>
+
+</body>
+</html>
