@@ -13,10 +13,12 @@
       text-align: center;
       padding: 20px;
     }
+
     #reader {
       width: 300px;
       margin: auto;
     }
+
     ul {
       margin-top: 20px;
       text-align: left;
@@ -35,6 +37,7 @@
 <ul id="sampleList"></ul>
 
 <script>
+
   function onScanSuccess(decodedText) {
     console.log("Raw QR Data:", decodedText);
 
@@ -52,25 +55,24 @@
   }
 
   function onScanError(errorMessage) {
-    // ignore scanning errors
+    // Ignore scan errors
   }
 
   const html5QrCode = new Html5Qrcode("reader");
 
-  Html5Qrcode.getCameras().then(devices => {
-    if (devices && devices.length) {
-      const cameraId = devices[0].id;
-
-      html5QrCode.start(
-        cameraId,
-        { fps: 10, qrbox: 250 },
-        onScanSuccess,
-        onScanError
-      );
-    }
-  }).catch(err => {
-    alert("Camera error: " + err);
+  // ✅ Start using BACK camera
+  html5QrCode.start(
+    { facingMode: "environment" }, // use back camera
+    {
+      fps: 10,
+      qrbox: 250
+    },
+    onScanSuccess,
+    onScanError
+  ).catch(err => {
+    alert("Camera start failed: " + err);
   });
+
 </script>
 
 </body>
