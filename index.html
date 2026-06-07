@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>QR Sample Scanner</title>
+  <title>Barcode Scanner</title>
 
-  <!-- QR Scanner Library -->
+  <!-- Scanner Library -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
@@ -15,7 +15,7 @@
     }
 
     #reader {
-      width: 300px;
+      width: 320px;
       margin: auto;
     }
 
@@ -29,29 +29,23 @@
 
 <body>
 
-<h2>Scan Sample QR Code</h2>
+<h2>Scan Barcode</h2>
 
 <div id="reader"></div>
 
-<h3>Scanned Sample IDs:</h3>
+<h3>Scanned Codes:</h3>
 <ul id="sampleList"></ul>
 
 <script>
 
   function onScanSuccess(decodedText) {
-    console.log("Raw QR Data:", decodedText);
-
-    // Example: S001,S002,S003
-    const samples = decodedText.split(",");
+    console.log("Scanned Code:", decodedText);
 
     const list = document.getElementById("sampleList");
-    list.innerHTML = "";
 
-    samples.forEach(sample => {
-      const li = document.createElement("li");
-      li.textContent = sample.trim();
-      list.appendChild(li);
-    });
+    const li = document.createElement("li");
+    li.textContent = decodedText;
+    list.appendChild(li);
   }
 
   function onScanError(errorMessage) {
@@ -60,12 +54,21 @@
 
   const html5QrCode = new Html5Qrcode("reader");
 
-  // ✅ Start using BACK camera
   html5QrCode.start(
-    { facingMode: "environment" }, // use back camera
+    { facingMode: "environment" },
     {
       fps: 10,
-      qrbox: 250
+      qrbox: 250,
+      
+      // ✅ Enable barcode scanning
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E
+      ]
     },
     onScanSuccess,
     onScanError
