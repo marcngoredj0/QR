@@ -1,30 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>QR Sample Scanner</title>
+<meta charset="UTF-8">
+<title>QR Sample Scanner</title>
 
-  <!-- QR Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      padding: 20px;
-    }
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    #reader {
-      width: 300px;
-      margin: auto;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 10px;
+  background: #f5f6fa;
+}
 
-    ul {
-      margin-top: 20px;
-      text-align: left;
-      display: inline-block;
-    }
-  </style>
+h2, h3 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#reader {
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+}
+
+#formSection {
+  display: none;
+}
+
+table {
+  width: 100%;
+  max-width: 500px;
+  margin: 10px auto;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th {
+  background: #0078d4;
+  color: white;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  font-size: 16px;
+}
+
+tr:nth-child(even) {
+  background: #f2f2f2;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  font-size: 18px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* Big mobile button */
+button {
+  width: 90%;
+  max-width: 400px;
+  padding: 15px;
+  font-size: 18px;
+  margin: 20px auto;
+  display: block;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 10px;
+}
+
+button:active {
+  background: #218838;
+}
+</style>
+
 </head>
 
 <body>
@@ -33,47 +91,121 @@
 
 <div id="reader"></div>
 
-<h3>Scanned Sample IDs:</h3>
-<ul id="sampleList"></ul>
+<div id="formSection">
+  <h3>Enter Sample Weights</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Sample ID</th>
+        <th>Weight</th>
+      </tr>
+    </thead>
+    <tbody id="sampleTable"></tbody>
+  </table>
+
+  <button onclick="generateCSV()">Submit & Download CSV</button>
+</div>
 
 <script>
 
-  function onScanSuccess(decodedText) {
-    console.log("Raw QR Data:", decodedText);
+let scannedSamples = [];
+let html5QrCode = new Html5Qrcode("reader");
 
-    // Example: S001,S002,S003
-    const samples = decodedText.split(",");
+function onScanSuccess(decodedText) {
+  console.log("QR Result:", decodedText);
 
-    const list = document.getElementById("sampleList");
-    list.innerHTML = "";
+  html5QrCode.stop();
 
-    samples.forEach(sample => {
-      const li = document.createElement("li");
-      li.textContent = sample.trim();
-      list.appendChild(li);
-    });
-  }
+  scannedSamples = decodedText.split(",").map(s => s.trim());
 
-  function onScanError(errorMessage) {
-    // Ignore scan errors
-  }
+  document.getElementById("reader").style.display = "none";
+  document.getElementById("formSection").style.display = "block";
 
-  const html5QrCode = new Html5Qrcode("reader");
+  const table = document.getElementById("sampleTable");
+  table.innerHTML = "";
 
-  // ✅ Start using BACK camera
-  html5QrCode.start(
-    { facingMode: "environment" }, // use back camera
-    {
-      fps: 10,
-      qrbox: 250
-    },
-    onScanSuccess,
-    onScanError
-  ).catch(err => {
-    alert("Camera start failed: " + err);
+  scannedSamples.forEach((sample, index) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${sample}</td>
+      <td>
+        <input 
+          type="number"
+          inputmode="decimal"
+          step="any"
+          id="weight-${index}"
+          placeholder="0.00">
+      </td>
+    `;
+
+    table.appendChild(row);
   });
+
+  // Auto move to next input on Enter
+  setTimeout(() => {
+    const inputs = document.querySelectorAll("input");
+
+    inputs.forEach((input, i) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (inputs[i + 1]) {
+            inputs[i + 1].focus();
+          }
+        }
+      });
+    });
+
+    // Focus first input
+    if (inputs.length > 0) inputs[0].focus();
+  }, 100);
+}
+
+function onScanError(err) {
+  // ignore scan errors
+}
+
+function generateCSV() {
+  let csv = "SampleID,Weight\n";
+
+  for (let i = 0; i < scannedSamples.length; i++) {
+    const weight = document.getElementById(`weight-${i}`).value;
+
+    if (!weight) {
+      alert("Please fill all weights before submitting");
+      return;
+    }
+
+    csv += `${scannedSamples[i]},${weight}\n`;
+  }
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sample_weights.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+// Start scanner
+html5QrCode.start(
+  { facingMode: "environment" },
+  {
+    fps: 10,
+    qrbox: { width: 250, height: 250 }
+  },
+  onScanSuccess,
+  onScanError
+).catch(err => {
+  alert("Camera error: " + err);
+});
 
 </script>
 
 </body>
-</html> make this into a barcode scanner instead
+</html>
