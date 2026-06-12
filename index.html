@@ -1,210 +1,141 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>QR Sample Scanner</title>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 10px;
-  background: #f5f6fa;
-}
-
-h2, h3 {
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-#reader {
-  width: 100%;
-  max-width: 400px;
-  margin: auto;
-}
-
-#formSection {
-  display: none;
-}
-
-table {
-  width: 100%;
-  max-width: 500px;
-  margin: 10px auto;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-th {
-  background: #0078d4;
-  color: white;
-}
-
-th, td {
-  padding: 12px;
-  text-align: left;
-  font-size: 16px;
-}
-
-tr:nth-child(even) {
-  background: #f2f2f2;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 18px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-/* Big mobile button */
-button {
-  width: 90%;
-  max-width: 400px;
-  padding: 15px;
-  font-size: 18px;
-  margin: 20px auto;
-  display: block;
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 10px;
-}
-
-button:active {
-  background: #218838;
-}
-</style>
-
+  <title>EtherCalc Sample Weights</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    select, input, button { margin: 5px 0; padding: 5px; }
+    .row { margin-bottom: 8px; }
+    .container { margin-top: 20px; }
+  </style>
 </head>
-
 <body>
 
-<h2>Scan Sample QR Code</h2>
+<h2>Sample Weight Entry</h2>
 
-<div id="reader"></div>
+<label>Select Hole ID:</label><br>
+<select id="holeSelect">
+  <option value="">-- Select Hole --</option>
+</select>
 
-<div id="formSection">
-  <h3>Enter Sample Weights</h3>
+<div id="formContainer" class="container"></div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Sample ID</th>
-        <th>Weight</th>
-      </tr>
-    </thead>
-    <tbody id="sampleTable"></tbody>
-  </table>
-
-  <button onclick="generateCSV()">Submit & Download CSV</button>
-</div>
+<button id="submitBtn" style="display:none;">Submit Weights</button>
 
 <script>
+const sheetURL = "https://ethercalc.net/29dc84f33e2a";
+let data = [];
+let filteredRows = [];
 
-let scannedSamples = [];
-let html5QrCode = new Html5Qrcode("reader");
 
-function onScanSuccess(decodedText) {
-  console.log("QR Result:", decodedText);
+function colLetter(n){
+  let s = "";
+  while(n > 0){
+    let m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - m) / 26);
+  }
+  return s;
+}
 
-  html5QrCode.stop();
 
-  scannedSamples = decodedText.split(",").map(s => s.trim());
+fetch(sheetURL + ".csv")
+  .then(res => res.text())
+  .then(csv => {
+    let rows = csv.split("\n").map(r => r.split(","));
+    
 
-  document.getElementById("reader").style.display = "none";
-  document.getElementById("formSection").style.display = "block";
+    data = rows.slice(1).map((row, i) => ({
+      rowIndex: i + 2,   // row number in EtherCalc
+      hole: row[0],
+      sample: row[1]
+    }));
 
-  const table = document.getElementById("sampleTable");
-  table.innerHTML = "";
-
-  scannedSamples.forEach((sample, index) => {
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>${sample}</td>
-      <td>
-        <input 
-          type="number"
-          inputmode="decimal"
-          step="any"
-          id="weight-${index}"
-          placeholder="0.00">
-      </td>
-    `;
-
-    table.appendChild(row);
+    initDropdown();
   });
 
-  // Auto move to next input on Enter
-  setTimeout(() => {
-    const inputs = document.querySelectorAll("input");
+function initDropdown(){
+  let select = document.getElementById("holeSelect");
 
-    inputs.forEach((input, i) => {
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          if (inputs[i + 1]) {
-            inputs[i + 1].focus();
-          }
-        }
-      });
-    });
+  let uniqueHoles = [...new Set(data.map(d => d.hole))];
 
-    // Focus first input
-    if (inputs.length > 0) inputs[0].focus();
-  }, 100);
+  uniqueHoles.forEach(h => {
+    let opt = document.createElement("option");
+    opt.value = h;
+    opt.textContent = h;
+    select.appendChild(opt);
+  });
+
+  select.addEventListener("change", buildForm);
 }
 
-function onScanError(err) {
-  // ignore scan errors
-}
+function buildForm(){
+  let hole = document.getElementById("holeSelect").value;
+  let container = document.getElementById("formContainer");
+  let btn = document.getElementById("submitBtn");
 
-function generateCSV() {
-  let csv = "SampleID,Weight\n";
-
-  for (let i = 0; i < scannedSamples.length; i++) {
-    const weight = document.getElementById(`weight-${i}`).value;
-
-    if (!weight) {
-      alert("Please fill all weights before submitting");
-      return;
-    }
-
-    csv += `${scannedSamples[i]},${weight}\n`;
+  container.innerHTML = "";
+  if (!hole) {
+    btn.style.display = "none";
+    return;
   }
 
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+  filteredRows = data.filter(d => d.hole === hole);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "sample_weights.csv";
-  a.click();
+  filteredRows.forEach((row, i) => {
+    let div = document.createElement("div");
+    div.className = "row";
 
-  URL.revokeObjectURL(url);
+    div.innerHTML = `
+      <label>${row.sample}</label>
+      <input type="number" step="any" id="w_${i}" placeholder="Weight">
+    `;
+
+    container.appendChild(div);
+  });
+
+  btn.style.display = "inline-block";
 }
 
-// Start scanner
-html5QrCode.start(
-  { facingMode: "environment" },
-  {
-    fps: 10,
-    qrbox: { width: 250, height: 250 }
-  },
-  onScanSuccess,
-  onScanError
-).catch(err => {
-  alert("Camera error: " + err);
-});
+document.getElementById("submitBtn").addEventListener("click", () => {
 
+  let updates = [];
+
+  filteredRows.forEach((row, i) => {
+    let val = document.getElementById(`w_${i}`).value;
+    if (val !== "") {
+      // Column C = weights
+      let cell = "C" + row.rowIndex;
+      updates.push({cell, value: val});
+    }
+  });
+
+  if (updates.length === 0) {
+    alert("No values entered");
+    return;
+  }
+
+
+  let body = updates.map(u => {
+    return `set ${u.cell} value n ${u.value}`;
+  }).join("\n");
+
+  fetch(sheetURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    body: body
+  })
+  .then(() => {
+    alert("Weights submitted successfully!");
+  })
+  .catch(err => {
+    alert("Error updating sheet");
+    console.error(err);
+  });
+
+});
 </script>
 
 </body>
